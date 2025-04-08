@@ -1,4 +1,4 @@
-FROM python:3.9-bullseye
+FROM python:3.9-bullseye-slim
 
 # Instalar LibreOffice y dependencias necesarias
 RUN apt-get update && apt-get install -y \
