@@ -1,0 +1,141 @@
+/* Estilos para la página de conversión de Word a PDF */
+
+/* Establece la fuente y los estilos predeterminados para el cuerpo del documento */
+body {
+    font-family:  'Roboto Slab', sans-serif; /* Utiliza la fuente Arial o una fuente sans-serif genérica */
+    margin: 0; /* Elimina los márgenes predeterminados del cuerpo */
+    padding: 0; /* Elimina el relleno predeterminado del cuerpo */
+    display: flex; /* Establece el contenedor principal como un contenedor flexible */
+    flex-direction: column; /* Los elementos hijos se colocarán en columnas */
+    min-height: 100vh; /* Establece la altura mínima del cuerpo al 100% del viewport */
+    background-image: url('img/fondo.jpg'); /* Establece una imagen de fondo */
+    background-size: cover; /* Ajusta la imagen de fondo al tamaño del contenedor */
+    background-position: center;
+    background-attachment: fixed;
+    color: #f5f3de; /* Establece el color del texto en blanco */
+}
+
+/* Estilos para el encabezado */
+header, footer {
+    background-color: rgba(37, 21, 59, 0.82); /* Establece el color de fondo del encabezado */
+    color: #f7f3cb; /* Establece el color del texto del encabezado */
+    padding: 10px; /* Añade relleno al encabezado */
+    text-align: center; /* Centra el texto del encabezado */
+}
+
+/* Estilos para el contenido principal */
+main {
+    flex: 1; /* Hace que el contenido principal ocupe todo el espacio disponible */
+    padding: 20px; /* Añade relleno al contenido principal */
+    display: flex; /* Establece el contenido principal como un contenedor flexible */
+    flex-direction: column; /* Los elementos hijos se colocarán en columnas */
+    align-items: center; /* Centra los elementos hijos horizontalmente */
+    justify-content: center;
+}
+
+/* Estilos para el formulario */
+form {
+    margin-bottom: 30px; /* Añade espacio en la parte inferior del formulario */
+    display: flex; /* Establece el formulario como un contenedor flexible */
+    flex-direction: column; /* Los elementos hijos se colocarán en columnas */
+    align-items: center; /* Centra los elementos hijos horizontalmente */
+    background-color: rgba(37, 21, 59, 0.0); /* Establece el color de fondo del formulario */
+}
+
+/* Estilos para las etiquetas */
+label {
+    font-weight: bold; /* Establece el peso de la fuente en negrita para las etiquetas */
+    margin-bottom: 5px; /* Añade espacio en la parte inferior de las etiquetas */
+   
+    
+}
+
+/* Estilos para los campos de entrada de tipo archivo */
+input[type="file"] {
+    margin-bottom: 10px; /* Añade espacio en la parte inferior de los campos de entrada */
+    padding: 8px; /* Añade relleno a los campos de entrada */
+    
+}
+
+/* Estilos para los botones */
+button {
+    background: linear-gradient(to right, #4a2796, #1d1d7c); /* Establece un degradado de color para los botones */
+    color: white; /* Establece el color del texto en blanco */
+    border: none; /* Elimina los bordes de los botones */
+    padding: 10px 20px; /* Añade relleno a los botones */
+    cursor: pointer; /* Cambia el cursor al pasar sobre los botones */
+    border-radius: 5px; /* Establece un radio de borde para los botones */
+    transition: background 0.3s; /* Aplica una transición suave al color de fondo */
+}
+
+/* Estilos para los botones al pasar el ratón sobre ellos */
+button:hover {
+    background: linear-gradient(to right, #0056b3, #007bff); /* Cambia el degradado al pasar el ratón sobre los botones */
+}
+
+
+/* Estilos para el mensaje de resultado */
+#result_message {
+    margin-bottom: 20px; /* Añade espacio en la parte inferior del mensaje de resultado */
+    padding: 10px; /* Añade relleno al mensaje de resultado */
+    border-radius: 5px; /* Establece un radio de borde para el mensaje de resultado */
+    width: 100%; /* Establece el ancho del mensaje de resultado al 100% */
+    text-align: center; /* Centra el texto del mensaje de resultado */
+    background-color: rgba(0, 3, 103, 0.3);
+    
+    
+}
+
+/* Estilos para el mensaje de error */
+#error_message {
+    background-color: #dc3545; /* Establece el color de fondo del mensaje de error */
+}
+
+/* Estilos para el mensaje de éxito */
+#success_message {
+    background-color: #09641e; /* Establece el color de fondo del mensaje de éxito */
+}
+
+/* Estilos para el enlace de descarga */
+#download_link {
+    background: linear-gradient(to right, #28a745, #218838); /* Establece un degradado de color para el enlace de descarga */
+    color: white; /* Establece el color del texto en blanco */
+    text-align: center; /* Centra el texto del enlace de descarga */
+    padding: 10px 20px; /* Añade relleno al enlace de descarga */
+    text-decoration: none; /* Elimina el subrayado del enlace de descarga */
+    border-radius: 5px; /* Establece un radio de borde para el enlace de descarga */
+    margin-top: 10px; /* Añade espacio en la parte superior del enlace de descarga */
+    display: block; /* Convierte el enlace de descarga en un bloque para ocupar todo el ancho disponible */
+    transition: background 0.3s; /* Aplica una transición suave al color de fondo */
+}
+
+/* Estilos para el enlace de descarga al pasar el ratón sobre él */
+#download_link:hover {
+    background: linear-gradient(to right, #218838, #28a745); /* Cambia el degradado al pasar el ratón sobre el enlace de descarga */
+}
+
+/* Estilos para el pie de página */
+footer {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    color: #f5eca9;
+    padding: 10px;
+    font-size: large;
+}
+
+
+/* Agrega el icono de TikTok */
+#icono-redes {
+    font-size: 30px;
+    background: linear-gradient(to right, #c9eb6b, #dda0bd);
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: inline-block;
+    transition: background 0.3s;
+    position: relative;
+    left: 20px;
+}
+
+

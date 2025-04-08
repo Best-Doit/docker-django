@@ -1,0 +1,40 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Convertir Word a PDF</title>
+    <link rel="stylesheet" type="text/css" href="{% static 'styles.css' %}">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Slab&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+
+
+</head>
+<body>
+    <header>
+        <h1>Convertir Word a PDF</h1>
+    </header>
+
+    <main>
+        <form id="conversion_form" action="{% url 'docs_pdf:convertir_word_pdf' %}" method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <label for="word_file">Seleccionar archivo Word:</label><br>
+            <input type="file" id="word_file" name="word_file" required><br><br>
+            <button type="submit">Convertir a PDF</button>
+        </form>
+
+        {% if message %}
+            <div id="result_message" class="{% if 'error' in message.lower %}error{% else %}success{% endif %}">{{ message }}</div>
+        {% endif %}
+
+        {% if archivo_pdf %}
+            <a href="{% url 'docs_pdf:descargar_pdf' filename=archivo_pdf %}" id="download_link">Descargar PDF</a>
+        {% endif %}
+    </main>
+    <footer>
+        <p>&copy; 2024 Best Doit</p>
+           <a href="https://www.tiktok.com/@best_doit" target="_blank"><i class="fab fa-tiktok" id="icono-redes"></i></a>
+    </footer>
+</body>
+</html>
