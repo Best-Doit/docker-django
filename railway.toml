@@ -1,0 +1,28 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "dockerfile"
+
+[deploy]
+startCommand = "gunicorn app_main.wsgi:application --bind 0.0.0.0:$PORT"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+[env]
+PORT = { default = "8000" }
+DJANGO_SETTINGS_MODULE = { default = "app_main.settings" }
+DEBUG = { default = "False" }
+ALLOWED_HOSTS = { default = "*" }
+SECRET_KEY = { default = "your-secret-key-here" }
+
+[healthcheck]
+path = "/"
+interval = 30
+timeout = 10
+
+[scaling]
+minReplicas = 1
+maxReplicas = 3
+
+[resources]
+memory = "512Mi"
+cpu = "500m"

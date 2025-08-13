@@ -1,46 +1,31 @@
-# Use Python 3.11 Alpine image for smaller size
-FROM python:3.11-alpine
+# Imagen base ligera
+FROM python:3.11-slim
 
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV DJANGO_DEBUG=False
-ENV DJANGO_SETTINGS_MODULE=app_main.settings
+# Evitar que Python genere .pyc y usar buffer estándar
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
 
-# Create non-root user for security
-RUN addgroup -g 1001 -S appgroup && \
-    adduser -S appuser -u 1001 -G appgroup
-
-# Install system dependencies
-RUN apk add --no-cache \
-    libreoffice \
-    && rm -rf /var/cache/apk/*
-
-# Set work directory
+# Crear directorio de trabajo
 WORKDIR /app
 
-# Copy requirements and install Python dependencies
+# Instalar dependencias del sistema necesarias para pdf2docx
+RUN apt-get update && apt-get install -y \
+    libmagic1 \
+    poppler-utils \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copiar requirements e instalarlos
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy project files
+# Copiar el resto del proyecto
 COPY . .
 
-# Create necessary directories with proper permissions
-RUN mkdir -p /app/staticfiles /app/media/pdf_files && \
-    chown -R appuser:appgroup /app && \
-    chmod -R 755 /app
+# Colectar estáticos
+RUN python manage.py collectstatic --noinput
 
-# Switch to non-root user
-USER appuser
+# Exponer puerto (Railway usa variable PORT)
+EXPOSE $PORT
 
-# Expose port
-EXPOSE 8000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/ || exit 1
-
-# Run the application with security settings
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "60", "--max-requests", "1000", "--max-requests-jitter", "100", "app_main.wsgi:application"]
-
+# Comando para producción con Railway
+CMD gunicorn app_main.wsgi:application --bind 0.0.0.0:$PORT

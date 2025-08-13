@@ -28,6 +28,13 @@ DEBUG = os.getenv('DJANGO_DEBUG', 'False').lower() == 'true'
 
 ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
+# Railway configuration
+if 'RAILWAY_ENVIRONMENT' in os.environ:
+    ALLOWED_HOSTS.extend(['*.railway.app', '*.up.railway.app'])
+    # Railway automatically provides HTTPS
+    SECURE_SSL_REDIRECT = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 
 # Application definition
 
@@ -120,5 +127,12 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
 FILE_UPLOAD_PERMISSIONS = 0o644
 
 # Allowed file extensions for uploads
-ALLOWED_UPLOAD_EXTENSIONS = ['.docx', '.doc']
+ALLOWED_UPLOAD_EXTENSIONS = ['.docx', '.doc', '.pdf']
 MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10MB
+
+# Allowed MIME types for uploads
+ALLOWED_WORD_MIMES = [
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/msword'
+]
+ALLOWED_PDF_MIMES = ['application/pdf']

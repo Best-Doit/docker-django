@@ -4,31 +4,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Convertir Word a PDF</title>
+    <title>Convertidor de Documentos - Word ⇄ PDF</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body class="min-h-screen text-white flex flex-col" style="background-image: url('{% static 'img/fondo.jpg' %}'); background-size: cover; background-position: center; background-attachment: fixed;">
     <header class="bg-black bg-opacity-30 backdrop-blur-sm">
         <div class="container mx-auto px-4 py-6">
-            <h1 class="text-3xl font-bold text-center text-yellow-200">Convertir Word a PDF</h1>
+            <h1 class="text-3xl font-bold text-center text-yellow-200">Convertidor de Documentos</h1>
+            <p class="text-center text-yellow-100 mt-2">Word ⇄ PDF • Conversión Bidireccional</p>
         </div>
     </header>
 
     <main class="flex-1 flex items-center justify-center px-4 py-8">
         <div class="bg-white bg-opacity-10 backdrop-blur-md rounded-xl p-8 shadow-2xl max-w-md w-full">
-            <form id="conversion_form" action="{% url 'docs_pdf:convertir_word_pdf' %}" method="post" enctype="multipart/form-data" class="space-y-6">
+            <form id="conversion_form" action="{% url 'docs_pdf:convertir_documento' %}" method="post" enctype="multipart/form-data" class="space-y-6">
                 {% csrf_token %}
                 <div>
-                    <label for="word_file" class="block text-sm font-medium text-yellow-200 mb-2">Seleccionar archivo Word:</label>
-                    <input type="file" id="word_file" name="word_file" required 
+                    <label for="document_file" class="block text-sm font-medium text-yellow-200 mb-2">Seleccionar archivo (Word o PDF):</label>
+                    <input type="file" id="document_file" name="document_file" required 
+                           accept=".docx,.doc,.pdf"
                            class="w-full px-3 py-2 bg-white bg-opacity-20 border border-white border-opacity-30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent">
+                    <p class="text-xs text-yellow-100 mt-1">Formatos soportados: .docx, .doc, .pdf</p>
                 </div>
                 <button type="submit" 
                         class="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 transform hover:scale-105 shadow-lg">
-                    <i class="fas fa-file-pdf mr-2"></i>Convertir a PDF
+                    <i class="fas fa-exchange-alt mr-2"></i>Convertir Documento
                 </button>
             </form>
+
+            <!-- Animación de TikTok -->
+            <div class="mt-6 text-center">
+                <div class="animate-bounce">
+                    <a href="https://www.tiktok.com/@best_doit" target="_blank" 
+                       class="inline-flex items-center space-x-2 bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-black font-bold py-2 px-4 rounded-full transition-all duration-300 transform hover:scale-110 shadow-lg">
+                        <i class="fab fa-tiktok text-lg animate-pulse"></i>
+                        <span class="text-sm">¡Sígueme en TikTok!</span>
+                    </a>
+                </div>
+                <p class="text-yellow-200 text-xs mt-2 animate-pulse">@best_doit • Tutoriales y tips</p>
+            </div>
 
             {% if message %}
                 <div class="mt-6 p-4 rounded-lg {% if 'error' in message.lower %}bg-red-500 bg-opacity-20 border border-red-400{% else %}bg-green-500 bg-opacity-20 border border-green-400{% endif %}">
@@ -36,11 +51,11 @@
                 </div>
             {% endif %}
 
-            {% if archivo_pdf %}
+            {% if archivo_convertido %}
                 <div class="mt-6">
-                    <a href="{% url 'docs_pdf:descargar_pdf' filename=archivo_pdf %}" 
+                    <a href="{% url 'docs_pdf:descargar_archivo' filename=archivo_convertido %}" 
                        class="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 transform hover:scale-105 shadow-lg flex items-center justify-center">
-                        <i class="fas fa-download mr-2"></i>Descargar PDF
+                        <i class="fas fa-download mr-2"></i>Descargar Archivo
                     </a>
                 </div>
             {% endif %}
@@ -50,9 +65,9 @@
     <footer class="bg-black bg-opacity-30 backdrop-blur-sm">
         <div class="container mx-auto px-4 py-4">
             <div class="flex items-center justify-center space-x-4">
-                <p class="text-yellow-200">&copy; 2024 Best Doit</p>
+                <p class="text-yellow-200">&copy; 2025 Best Doit</p>
                 <a href="https://www.tiktok.com/@best_doit" target="_blank" 
-                   class="text-2xl bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent hover:scale-110 transition-transform duration-300">
+                   class="text-2xl text-yellow-300 hover:text-yellow-100 hover:scale-110 transition-all duration-300 drop-shadow-lg">
                     <i class="fab fa-tiktok"></i>
                 </a>
             </div>

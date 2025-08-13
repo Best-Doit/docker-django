@@ -1,0 +1,60 @@
+# Railway ignore file
+# Archivos y directorios que no se deben incluir en el despliegue
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Local environment files
+.env
+.env.local
+.env.*.local
+
+# Media files (uploads)
+media/
+
+# Static files (se generan en build)
+staticfiles/
+
+# Logs
+*.log
+logs/
+
+# Documentation
+README.md
+*.md
+
+# Test files
+tests/
+*_test.py
+test_*.py
+
+# Development files
+docker-compose.yml
+docker-compose.*.yml
+
+# Backup files
+*.bak
+*.backup
