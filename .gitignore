@@ -184,3 +184,10 @@ test.pdf
 .Trashes
 ehthumbs.db
 Thumbs.db
+.env
+.env.test
+.env.prod
+.env.dev
+.env.testing
+.env.production
+.env.dev
