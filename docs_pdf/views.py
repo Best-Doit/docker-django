@@ -58,10 +58,19 @@ def convertir_documento(request):
             if file_extension in ['.docx', '.doc']:
                 # Convertir Word a PDF usando LibreOffice
                 output_filename = os.path.splitext(filename)[0] + '.pdf'
-                subprocess.run(
+                result = subprocess.run(
                     ['libreoffice', '--headless', '--convert-to', 'pdf', filepath, '--outdir', upload_dir],
-                    check=True
+                    check=True,
+                    timeout=60,  # Timeout de 60 segundos
+                    capture_output=True,
+                    text=True
                 )
+                
+                # Verificar que el archivo de salida se haya creado
+                output_path = os.path.join(upload_dir, output_filename)
+                if not os.path.exists(output_path):
+                    raise Exception("LibreOffice no pudo generar el archivo PDF")
+                
                 conversion_type = "Word a PDF"
             
             elif file_extension == '.pdf':
@@ -80,10 +89,15 @@ def convertir_documento(request):
             archivo_convertido = output_filename
             message = f"¡Se ha convertido {document_file.name} de {conversion_type} exitosamente!"
             
+        except subprocess.TimeoutExpired:
+            message = "Error: La conversión tardó demasiado tiempo. Intenta con un archivo más pequeño."
         except subprocess.CalledProcessError as e:
-            message = f"Error en la conversión con LibreOffice: {e}"
+            if 'libreoffice' in str(e.cmd):
+                message = "Error: No se pudo convertir el archivo DOCX. Verifica que el archivo no esté corrupto."
+            else:
+                message = f"Error en la conversión: {e}"
         except Exception as e:
-            message = f"Error en la conversión: {e}"
+            message = f"Error inesperado en la conversión: {e}"
 
     return render(request, 'index.html', {'message': message, 'archivo_convertido': archivo_convertido})
 

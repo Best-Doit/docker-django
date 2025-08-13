@@ -8,10 +8,13 @@ ENV PYTHONUNBUFFERED 1
 # Crear directorio de trabajo
 WORKDIR /app
 
-# Instalar dependencias del sistema necesarias para pdf2docx
+# Instalar dependencias del sistema necesarias para pdf2docx y LibreOffice
 RUN apt-get update && apt-get install -y \
     libmagic1 \
     poppler-utils \
+    libreoffice \
+    libreoffice-writer \
+    fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
 
 # Copiar requirements e instalarlos
