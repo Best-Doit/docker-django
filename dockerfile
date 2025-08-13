@@ -5,6 +5,7 @@ FROM python:3.11-slim
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
+
 # Crear directorio de trabajo
 WORKDIR /app
 
@@ -24,8 +25,8 @@ COPY . .
 # Colectar estáticos
 RUN python manage.py collectstatic --noinput
 
-# Exponer puerto (Railway usa variable PORT)
-EXPOSE $PORT
+# Exponer puerto (Railway asigna dinámicamente)
+EXPOSE 8000
 
 # Comando para producción con Railway
-CMD gunicorn app_main.wsgi:application --bind 0.0.0.0:$PORT
+CMD ["sh", "-c", "gunicorn app_main.wsgi:application --bind 0.0.0.0:${PORT:-8000}"]
