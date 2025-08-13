@@ -30,10 +30,21 @@ ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split('
 
 # Railway configuration
 if 'RAILWAY_ENVIRONMENT' in os.environ:
-    ALLOWED_HOSTS.extend(['*.railway.app', '*.up.railway.app'])
+    ALLOWED_HOSTS.extend([
+        '*.railway.app', 
+        '*.up.railway.app',
+        'conversor-docs.up.railway.app'
+    ])
     # Railway automatically provides HTTPS
     SECURE_SSL_REDIRECT = True
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+else:
+    # Add Railway domain even if RAILWAY_ENVIRONMENT is not set
+    ALLOWED_HOSTS.extend([
+        'conversor-docs.up.railway.app',
+        '*.railway.app',
+        '*.up.railway.app'
+    ])
 
 
 # Application definition
