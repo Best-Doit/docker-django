@@ -5,21 +5,6 @@ from django.http import HttpResponse, HttpResponseNotFound
 from django.core.files.storage import FileSystemStorage
 from django.conf import settings
 
-def convertir_a_pdf(input_path, output_path):
-    """Convierte un archivo DOCX a PDF usando unoconv."""
-    try:
-        subprocess.run(["unoconv", "-f", "pdf", "-o", output_path, input_path], check=True)
-        return True
-    except subprocess.CalledProcessError as e:
-        return f"Error en la conversión: {str(e)}"
-
-import os
-import subprocess
-from django.shortcuts import render
-from django.http import HttpResponse, HttpResponseNotFound
-from django.core.files.storage import FileSystemStorage
-from django.conf import settings
-
 def convertir_word_pdf(request):
     message = None
     archivo_pdf = None

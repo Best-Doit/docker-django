@@ -1,33 +1,31 @@
-FROM python:3.9-bullseye-slim
+# Use Python 3.11 Alpine image for smaller size
+FROM python:3.11-alpine
 
-# Instalar LibreOffice y dependencias necesarias
-RUN apt-get update && apt-get install -y \
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# Install system dependencies
+RUN apk add --no-cache \
     libreoffice \
-    libreoffice-writer \
-    libreoffice-core \
-    libreoffice-common \
-    libreoffice-calc \
-    fonts-dejavu \
-    && apt-get clean
+    && rm -rf /var/cache/apk/*
 
-# Instalar dependencias de Python
-RUN pip install --upgrade pip
-
-# Establece el directorio de trabajo
+# Set work directory
 WORKDIR /app
 
-# Copia el código fuente
-COPY . /app
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Instala las dependencias del proyecto
-RUN pip install --default-timeout=100 --no-cache-dir -r requirements.txt
+# Copy project files
+COPY . .
 
-# Recopilar archivos estáticos
-RUN python manage.py collectstatic --noinput
+# Create necessary directories
+RUN mkdir -p /app/staticfiles /app/media/pdf_files
 
-# Expone el puerto 8000
+# Expose port
 EXPOSE 8000
 
-# Define el comando para ejecutar la aplicación con gunicorn (más adecuado para producción)
-CMD ["gunicorn", "myproject.wsgi:application", "--bind", "0.0.0.0:8000"]
+# Run the application
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "60", "app_main.wsgi:application"]
 
