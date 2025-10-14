@@ -346,17 +346,25 @@ def convertir_documento(request):
                 output_filename = os.path.splitext(filename)[0] + '.docx'
                 output_path = os.path.join(upload_dir, output_filename)
                 
-                cv = Converter(filepath)
-                cv.convert(output_path, start=0, end=None)
-                cv.close()
-                conversion_type = "PDF a Word"
-            
+                try:
+                    cv = Converter(filepath)
+                    cv.convert(output_path, start=0, end=None)
+                    cv.close()
+                    conversion_type = "PDF a Word"
+                except Exception as e:
+                    message = f"Error al convertir PDF a Word con pdf2docx: {e}"
+                    # Limpiar archivo temporal si existe
+                    if os.path.exists(filepath): os.remove(filepath)
+                    return render(request, 'index.html', {'message': message})
+                
             # Conversión de imagen usando OCR mejorado
             elif file_extension in ['.jpg', '.jpeg', '.png']:
                 if mime_type not in settings.ALLOWED_IMAGE_MIMES:
                     message = "Tipo de archivo de imagen no válido."
                     return render(request, 'index.html', {'message': message})
                 
+                corrected_filepath = filepath # Inicializar corrected_filepath
+
                 try:
                     # Corregir perspectiva de la imagen
                     corrected_filepath = correct_image_perspective(filepath)
@@ -447,10 +455,12 @@ def convertir_documento(request):
         except subprocess.TimeoutExpired:
             message = "Error: La conversión tardó demasiado tiempo. Intenta con un archivo más pequeño."
         except subprocess.CalledProcessError as e:
+            # Incluir la salida de LibreOffice en el mensaje de error
+            error_output = e.stderr if e.stderr else e.stdout
             if 'libreoffice' in str(e.cmd):
-                message = "Error: No se pudo convertir el archivo DOCX. Verifica que el archivo no esté corrupto."
+                message = f"Error: LibreOffice no pudo convertir el archivo. Verifica que el archivo no esté corrupto o sea compatible. Detalles: {error_output}"
             else:
-                message = f"Error en la conversión: {e}"
+                message = f"Error en la conversión: {e}. Detalles: {error_output}"
         except Exception as e:
             message = f"Error inesperado en la conversión: {e}"
 
