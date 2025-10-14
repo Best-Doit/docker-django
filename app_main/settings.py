@@ -33,7 +33,8 @@ if 'RAILWAY_ENVIRONMENT' in os.environ:
     ALLOWED_HOSTS.extend([
         '*.railway.app', 
         '*.up.railway.app',
-        'conversor-docs.up.railway.app'
+        'conversor-docs.up.railway.app',
+        'healthcheck.railway.app'
     ])
     # Railway automatically provides HTTPS
     SECURE_SSL_REDIRECT = True
@@ -43,7 +44,8 @@ else:
     ALLOWED_HOSTS.extend([
         'conversor-docs.up.railway.app',
         '*.railway.app',
-        '*.up.railway.app'
+        '*.up.railway.app',
+        'healthcheck.railway.app'
     ])
 
 
