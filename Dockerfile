@@ -16,6 +16,9 @@ RUN apt-get update && \
     tesseract-ocr-spa \
     tesseract-ocr-eng \
     poppler-utils \
+    libreoffice \
+    libreoffice-writer \
+    fonts-liberation \
     libgl1 \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/* \

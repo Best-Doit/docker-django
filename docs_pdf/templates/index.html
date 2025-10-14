@@ -84,24 +84,24 @@
             <!-- Contenedor para la cámara (Escáner de Documentos) -->
             <div id="camer-input_section" class="hidden space-y-6">
                 <h3 class="text-xl font-bold text-center text-yellow-200 mb-4">Escanear Documento</h3>
-                <div id="camera_container" class="mt-6 bg-gray-800 rounded-lg p-4">
-                    <video id="video" width="100%" height="auto" autoplay class="w-full rounded-lg"></video>
-                    <canvas id="canvas" width="640" height="480" class="hidden"></canvas>
-                    <div class="flex justify-around mt-4 space-x-2">
+                <div id="camera_container" class="mt-6 bg-gray-800 rounded-lg p-4 flex flex-col items-center">
+                    <video id="video" class="w-full max-w-md rounded-lg mb-4"></video>
+                    <canvas id="canvas" class="w-full max-w-md rounded-lg hidden mb-4"></canvas>
+                    <div class="flex flex-wrap justify-center gap-2 mt-4 w-full max-w-md">
                         <button type="button" id="capture_btn" 
-                                class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg flex-1">
+                                class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg flex-1 min-w-[120px]">
                             <i class="fas fa-camera"></i> Capturar
                         </button>
                         <button type="button" id="retake_btn" 
-                                class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg flex-1 hidden">
+                                class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg flex-1 min-w-[120px] hidden">
                             <i class="fas fa-redo"></i> Retomar
                         </button>
                         <button type="button" id="upload_camera_btn" 
-                                class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg flex-1 hidden">
+                                class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg flex-1 min-w-[120px] hidden">
                             <i class="fas fa-upload"></i> Usar Foto
                         </button>
                     </div>
-                    <button type="button" id="back_to_menu_camera" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 mt-4">
+                    <button type="button" id="back_to_menu_camera" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 mt-4 max-w-md">
                         <i class="fas fa-arrow-left mr-2"></i>Volver al Menú Principal
                     </button>
                 </div>
@@ -109,6 +109,11 @@
             </div>
 
             <!-- Mensajes y Descarga (mantener fuera de formularios) -->
+            <div id="loading_spinner" class="hidden mt-6 text-center text-yellow-200">
+                <i class="fas fa-spinner fa-spin fa-3x"></i>
+                <p class="mt-2 text-lg">Procesando tu documento...</p>
+                <p class="text-sm">Esto puede tardar unos segundos, por favor espera.</p>
+            </div>
             {% if message %}
                 <div class="mt-6 p-4 rounded-lg {% if 'error' in message.lower %}bg-red-500 bg-opacity-20 border border-red-400{% else %}bg-green-500 bg-opacity-20 border border-green-400{% endif %}">
                     <p class="text-center">{{ message }}</p>
@@ -158,6 +163,9 @@
             const backToMenuFileBtn = document.getElementById('back_to_menu_file');
             const backToMenuCameraBtn = document.getElementById('back_to_menu_camera');
 
+            // Spinner de carga
+            const loadingSpinner = document.getElementById('loading_spinner');
+
             // Referencias de la cámara
             const video = document.getElementById('video');
             const canvas = document.getElementById('canvas');
@@ -165,6 +173,7 @@
             const retakeBtn = document.getElementById('retake_btn');
             const uploadCameraBtn = document.getElementById('upload_camera_btn');
             const documentFileInput = document.getElementById('document_file');
+            const conversionForm = document.getElementById('conversion_form');
             const convertButton = document.getElementById('convert_button');
 
             let stream;
@@ -175,11 +184,25 @@
                 fileUploadSection.classList.add('hidden');
                 cameraInputSection.classList.add('hidden');
                 outputFormatSection.classList.add('hidden');
+                loadingSpinner.classList.add('hidden'); // Ocultar spinner
                 convertButton.disabled = false;
                 if (stream) {
                     stream.getTracks().forEach(track => track.stop());
                 }
             }
+
+            // Event listener para el envío del formulario (mostrar spinner)
+            conversionForm.addEventListener('submit', function() {
+                loadingSpinner.classList.remove('hidden');
+                // Opcional: deshabilitar el botón de envío para evitar múltiples clics
+                convertButton.disabled = true;
+            });
+
+            // Ocultar spinner si hay un mensaje de éxito o error (renderizado por Django)
+            {% if message %} // Esto asume que Django renderiza el mensaje después del envío
+                loadingSpinner.classList.add('hidden');
+                convertButton.disabled = false;
+            {% endif %}
 
             // Event listeners para los botones del menú
             btnWordPdf.addEventListener('click', () => {

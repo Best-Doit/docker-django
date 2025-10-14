@@ -1,4 +1,5 @@
 import os
+import subprocess
 import mimetypes
 import cv2
 import numpy as np
@@ -18,6 +19,7 @@ from reportlab.lib.pagesizes import letter, A4
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.utils import ImageReader
+import imutils
 
 def preprocess_image_for_ocr(image_path):
     """
@@ -89,56 +91,96 @@ def preprocess_image_for_ocr(image_path):
         print(f"Error en preprocesamiento: {e}")
         return image_path  # Retornar imagen original si hay error
 
+def order_points(pts):
+    # Inicializar una lista de coordenadas ordenadas
+    # ([arriba-izquierda, arriba-derecha, abajo-derecha, abajo-izquierda])
+    rect = np.zeros((4, 2), dtype = "float32")
+    
+    # La suma de las coordenadas x e y nos dará el punto superior-izquierda,
+    # mientras que el punto inferior-derecha tendrá la suma más grande.
+    s = pts.sum(axis = 1)
+    rect[0] = pts[np.argmin(s)]
+    rect[2] = pts[np.argmax(s)]
+    
+    # Calcular la diferencia entre las coordenadas x e y para encontrar
+    # el punto superior-derecha (diferencia más pequeña) y el inferior-izquierda (diferencia más grande)
+    diff = np.diff(pts, axis = 1)
+    rect[1] = pts[np.argmin(diff)]
+    rect[3] = pts[np.argmax(diff)]
+    
+    # Retornar las coordenadas ordenadas
+    return rect
+
 def correct_image_perspective(image_path):
     """
-    Corrige la perspectiva de la imagen como un escáner
-    Detecta bordes del documento y aplica transformación perspectiva
+    Corrige la perspectiva de la imagen como un escáner.
+    Detecta bordes del documento, aplica transformación de perspectiva y mejora la calidad.
     """
     try:
         import cv2
         import numpy as np
         
-        # Leer imagen y convertir a escala de grises
         image = cv2.imread(image_path)
+        if image is None:
+            raise Exception("No se pudo cargar la imagen para corrección de perspectiva.")
+
+        # Escalar imagen para procesamiento si es muy grande
+        ratio = image.shape[0] / 500.0
+        orig = image.copy()
+        image = imutils.resize(image, height = 500)
+
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        
-        # Aplicar filtro Gaussiano y detector de bordes Canny
         blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-        edged = cv2.Canny(blurred, 50, 150)
-        
-        # Encontrar contornos
-        contours, _ = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        contours = sorted(contours, key=cv2.contourArea, reverse=True)[:5]
-        
-        # Encontrar contorno con 4 puntos (documento)
-        for contour in contours:
-            peri = cv2.arcLength(contour, True)
-            approx = cv2.approxPolyDP(contour, 0.02 * peri, True)
+        edged = cv2.Canny(blurred, 75, 200)
+
+        contours, _ = cv2.findContours(edged.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+        contours = sorted(contours, key = cv2.contourArea, reverse = True)[:5]
+
+        screenCnt = None
+        for c in contours:
+            peri = cv2.arcLength(c, True)
+            approx = cv2.approxPolyDP(c, 0.02 * peri, True)
             
             if len(approx) == 4:
-                # Puntos del documento
-                doc_points = approx.reshape(4, 2)
-                
-                # Puntos destino (rectángulo perfecto)
-                width, height = 800, 1000
-                dst_points = np.array([[0, 0], [width, 0],
-                                      [width, height], [0, height]], dtype="float32")
-                
-                # Calcular matriz de transformación perspectiva
-                matrix = cv2.getPerspectiveTransform(doc_points.astype("float32"), dst_points)
-                
-                # Aplicar transformación
-                corrected = cv2.warpPerspective(image, matrix, (width, height))
-                
-                # Guardar imagen corregida
-                corrected_path = image_path.replace('.', '_corrected.')
-                cv2.imwrite(corrected_path, corrected)
-                
-                return corrected_path
+                screenCnt = approx
+                break
         
-        # Si no se encuentra documento, retornar original
+        if screenCnt is None:
+            print("No se pudo encontrar el contorno del documento, retornando imagen original.")
+            return image_path
+
+        # Aplicar corrección de perspectiva
+        rect = order_points(screenCnt.reshape(4, 2) * ratio) # Multiplicar por el ratio para obtener las coordenadas originales
+        (tl, tr, br, bl) = rect
+
+        # Calcular el ancho de la nueva imagen
+        widthA = np.sqrt(((br[0] - bl[0]) ** 2) + ((br[1] - bl[1]) ** 2))
+        widthB = np.sqrt(((tr[0] - tl[0]) ** 2) + ((tr[1] - tl[1]) ** 2))
+        maxWidth = max(int(widthA), int(widthB))
+
+        # Calcular la altura de la nueva imagen
+        heightA = np.sqrt(((tr[0] - br[0]) ** 2) + ((tr[1] - br[1]) ** 2))
+        heightB = np.sqrt(((tl[0] - bl[0]) ** 2) + ((tl[1] - bl[1]) ** 2))
+        maxHeight = max(int(heightA), int(heightB))
+
+        dst = np.array([
+            [0, 0],
+            [maxWidth - 1, 0],
+            [maxWidth - 1, maxHeight - 1],
+            [0, maxHeight - 1]], dtype = "float32")
+
+        M = cv2.getPerspectiveTransform(rect, dst)
+        corrected = cv2.warpPerspective(orig, M, (maxWidth, maxHeight))
+
+        # Guardar imagen corregida temporalmente
+        corrected_path = image_path.replace('.', '_corrected.')
+        cv2.imwrite(corrected_path, corrected)
+
+        return corrected_path
+        
+    except ImportError:
+        print("OpenCV no disponible para corrección de perspectiva, se omitirá.")
         return image_path
-        
     except Exception as e:
         print(f"Error en corrección perspectiva: {e}")
         return image_path
@@ -282,13 +324,21 @@ def convertir_documento(request):
 
         try:
             if file_extension in ['.docx', '.doc']:
-                # Convertir Word a PDF usando pdf2docx (nueva implementación)
+                # Convertir Word a PDF usando LibreOffice
                 output_filename = os.path.splitext(filename)[0] + '.pdf'
-                output_path = os.path.join(upload_dir, output_filename)
+                result = subprocess.run(
+                    ['libreoffice', '--headless', '--convert-to', 'pdf', filepath, '--outdir', upload_dir],
+                    check=True,
+                    timeout=60,  # Timeout de 60 segundos
+                    capture_output=True,
+                    text=True
+                )
                 
-                cv = Converter(filepath)
-                cv.convert(output_path, start=0, end=None)
-                cv.close()
+                # Verificar que el archivo de salida se haya creado
+                output_path = os.path.join(upload_dir, output_filename)
+                if not os.path.exists(output_path):
+                    raise Exception("LibreOffice no pudo generar el archivo PDF")
+                
                 conversion_type = "Word a PDF"
 
             elif file_extension == '.pdf':
@@ -394,6 +444,13 @@ def convertir_documento(request):
             archivo_convertido = output_filename
             message = f"¡Se ha convertido {document_file.name} de {conversion_type} exitosamente!"
             
+        except subprocess.TimeoutExpired:
+            message = "Error: La conversión tardó demasiado tiempo. Intenta con un archivo más pequeño."
+        except subprocess.CalledProcessError as e:
+            if 'libreoffice' in str(e.cmd):
+                message = "Error: No se pudo convertir el archivo DOCX. Verifica que el archivo no esté corrupto."
+            else:
+                message = f"Error en la conversión: {e}"
         except Exception as e:
             message = f"Error inesperado en la conversión: {e}"
 
