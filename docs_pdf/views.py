@@ -23,38 +23,68 @@ from reportlab.lib.utils import ImageReader
 def preprocess_image_for_ocr(image_path):
     """
     Preprocesa una imagen para mejorar la precisión del OCR
+    Usa PIL para compatibilidad con Railway
     """
     try:
-        # Leer imagen con OpenCV
-        img = cv2.imread(image_path)
-        if img is None:
-            raise Exception("No se pudo cargar la imagen")
-        
-        # Convertir a escala de grises
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        
-        # Reducir ruido
-        denoised = cv2.medianBlur(gray, 3)
-        
-        # Aplicar filtro bilateral para reducir ruido manteniendo bordes
-        filtered = cv2.bilateralFilter(denoised, 9, 75, 75)
-        
-        # Mejorar contraste usando CLAHE (Contrast Limited Adaptive Histogram Equalization)
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-        enhanced = clahe.apply(filtered)
-        
-        # Aplicar umbralización adaptativa
-        thresh = cv2.adaptiveThreshold(enhanced, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
-        
-        # Operaciones morfológicas para limpiar la imagen
-        kernel = np.ones((1,1), np.uint8)
-        cleaned = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
-        
-        # Guardar imagen preprocesada temporalmente
-        temp_path = image_path.replace('.', '_processed.')
-        cv2.imwrite(temp_path, cleaned)
-        
-        return temp_path
+        # Intentar usar OpenCV si está disponible
+        try:
+            import cv2
+            import numpy as np
+            
+            # Leer imagen con OpenCV
+            img = cv2.imread(image_path)
+            if img is None:
+                raise Exception("No se pudo cargar la imagen")
+            
+            # Convertir a escala de grises
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            
+            # Reducir ruido
+            denoised = cv2.medianBlur(gray, 3)
+            
+            # Aplicar filtro bilateral para reducir ruido manteniendo bordes
+            filtered = cv2.bilateralFilter(denoised, 9, 75, 75)
+            
+            # Mejorar contraste usando CLAHE
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+            enhanced = clahe.apply(filtered)
+            
+            # Aplicar umbralización adaptativa
+            thresh = cv2.adaptiveThreshold(enhanced, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+            
+            # Operaciones morfológicas para limpiar la imagen
+            kernel = np.ones((1,1), np.uint8)
+            cleaned = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
+            
+            # Guardar imagen preprocesada temporalmente
+            temp_path = image_path.replace('.', '_processed.')
+            cv2.imwrite(temp_path, cleaned)
+            
+            return temp_path
+            
+        except ImportError:
+            # Fallback a PIL si OpenCV no está disponible
+            print("OpenCV no disponible, usando PIL para preprocesamiento básico")
+            
+            # Usar PIL para preprocesamiento básico
+            image = Image.open(image_path)
+            
+            # Convertir a escala de grises
+            if image.mode != 'L':
+                image = image.convert('L')
+            
+            # Mejorar contraste
+            enhancer = ImageEnhance.Contrast(image)
+            image = enhancer.enhance(2.0)
+            
+            # Mejorar nitidez
+            image = image.filter(ImageFilter.SHARPEN)
+            
+            # Guardar imagen preprocesada
+            temp_path = image_path.replace('.', '_processed.')
+            image.save(temp_path)
+            
+            return temp_path
         
     except Exception as e:
         print(f"Error en preprocesamiento: {e}")

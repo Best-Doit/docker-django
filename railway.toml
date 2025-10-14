@@ -4,7 +4,9 @@ dockerfilePath = "Dockerfile"
 
 [deploy]
 restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 10
+restartPolicyMaxRetries = 5
+healthcheckPath = "/"
+healthcheckTimeout = 30
 
 [env]
 PORT = { default = "8000" }
@@ -12,16 +14,20 @@ DJANGO_SETTINGS_MODULE = { default = "app_main.settings" }
 DEBUG = { default = "False" }
 ALLOWED_HOSTS = { default = "localhost,127.0.0.1,conversor-docs.up.railway.app,*.railway.app,*.up.railway.app" }
 SECRET_KEY = { default = "your-secret-key-here" }
+# Optimizaciones para OCR
+PYTHONUNBUFFERED = { default = "1" }
+PYTHONDONTWRITEBYTECODE = { default = "1" }
 
 [healthcheck]
 path = "/"
-interval = 30
-timeout = 10
+interval = 60
+timeout = 30
+initialDelay = 30
 
 [scaling]
 minReplicas = 1
-maxReplicas = 3
+maxReplicas = 2
 
 [resources]
-memory = "512Mi"
-cpu = "500m"
+memory = "1Gi"
+cpu = "1000m"
