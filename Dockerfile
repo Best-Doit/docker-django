@@ -26,7 +26,7 @@ RUN apt-get update && \
 
 # Copiar requirements primero para mejor caching
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade --force-reinstall -r requirements.txt
 
 # Copiar solo lo necesario para producción - Forzar reconstrucción
 COPY app_main/ ./app_main/
