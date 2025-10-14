@@ -28,7 +28,7 @@ RUN apt-get update && \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar solo lo necesario para producción
+# Copiar solo lo necesario para producción - Forzar reconstrucción
 COPY app_main/ ./app_main/
 COPY docs_pdf/ ./docs_pdf/
 COPY manage.py .
