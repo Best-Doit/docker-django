@@ -138,7 +138,7 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
 FILE_UPLOAD_PERMISSIONS = 0o644
 
 # Allowed file extensions for uploads
-ALLOWED_UPLOAD_EXTENSIONS = ['.docx', '.doc', '.pdf']
+ALLOWED_UPLOAD_EXTENSIONS = ['.docx', '.doc', '.pdf', '.jpg', '.jpeg', '.png']
 MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10MB
 
 # Allowed MIME types for uploads
@@ -147,3 +147,8 @@ ALLOWED_WORD_MIMES = [
     'application/msword'
 ]
 ALLOWED_PDF_MIMES = ['application/pdf']
+
+ALLOWED_IMAGE_MIMES = [
+    'image/jpeg',  # .jpg, .jpeg
+    'image/png',   # .png
+]

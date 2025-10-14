@@ -15,6 +15,9 @@ RUN apt-get update && apt-get install -y \
     libreoffice \
     libreoffice-writer \
     fonts-liberation \
+    tesseract-ocr \
+    tesseract-ocr-spa \
+    tesseract-ocr-eng \
     && rm -rf /var/lib/apt/lists/*
 
 # Copiar requirements e instalarlos

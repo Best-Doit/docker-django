@@ -12,7 +12,7 @@
     <header class="bg-black bg-opacity-30 backdrop-blur-sm">
         <div class="container mx-auto px-4 py-6">
             <h1 class="text-3xl font-bold text-center text-yellow-200">Convertidor de Documentos</h1>
-            <p class="text-center text-yellow-100 mt-2">Word ⇄ PDF • Conversión Bidireccional</p>
+            <p class="text-center text-yellow-100 mt-2">Word ⇄ PDF • Imagen a Word/PDF (OCR Avanzado)</p>
         </div>
     </header>
 
@@ -21,11 +21,23 @@
             <form id="conversion_form" action="{% url 'docs_pdf:convertir_documento' %}" method="post" enctype="multipart/form-data" class="space-y-6">
                 {% csrf_token %}
                 <div>
-                    <label for="document_file" class="block text-sm font-medium text-yellow-200 mb-2">Seleccionar archivo (Word o PDF):</label>
+                    <label for="document_file" class="block text-sm font-medium text-yellow-200 mb-2">Seleccionar archivo:</label>
                     <input type="file" id="document_file" name="document_file" required 
-                           accept=".docx,.doc,.pdf"
+                           accept=".docx,.doc,.pdf,.jpg,.jpeg,.png"
                            class="w-full px-3 py-2 bg-white bg-opacity-20 border border-white border-opacity-30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent">
-                    <p class="text-xs text-yellow-100 mt-1">Formatos soportados: .docx, .doc, .pdf</p>
+                    <p class="text-xs text-yellow-100 mt-1">Formatos soportados: .docx, .doc, .pdf, .jpg, .jpeg, .png</p>
+                    <p class="text-xs text-yellow-100 mt-1">📄 Word ⇄ PDF | 🖼️ Imagen → Word/PDF (OCR Avanzado)</p>
+                </div>
+                
+                <!-- Selector de formato de salida para imágenes -->
+                <div id="output_format_section" class="hidden">
+                    <label for="output_format" class="block text-sm font-medium text-yellow-200 mb-2">Formato de salida para imagen:</label>
+                    <select id="output_format" name="output_format" 
+                            class="w-full px-3 py-2 bg-white bg-opacity-20 border border-white border-opacity-30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent">
+                        <option value="word" class="text-gray-800">📄 Documento Word (.docx)</option>
+                        <option value="pdf" class="text-gray-800">📋 Documento PDF (.pdf)</option>
+                    </select>
+                    <p class="text-xs text-yellow-100 mt-1">💡 El OCR avanzado mejora la precisión del reconocimiento de texto</p>
                 </div>
                 <button type="submit" 
                         class="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 transform hover:scale-105 shadow-lg">
@@ -73,5 +85,29 @@
             </div>
         </div>
     </footer>
+
+    <script>
+        // Mostrar/ocultar selector de formato según el tipo de archivo
+        document.getElementById('document_file').addEventListener('change', function() {
+            const fileInput = this;
+            const outputFormatSection = document.getElementById('output_format_section');
+            const fileName = fileInput.value.toLowerCase();
+            
+            // Verificar si es una imagen
+            const isImage = fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || fileName.endsWith('.png');
+            
+            if (isImage) {
+                outputFormatSection.classList.remove('hidden');
+            } else {
+                outputFormatSection.classList.add('hidden');
+            }
+        });
+
+        // Animación suave para el selector
+        document.addEventListener('DOMContentLoaded', function() {
+            const outputFormatSection = document.getElementById('output_format_section');
+            outputFormatSection.style.transition = 'all 0.3s ease-in-out';
+        });
+    </script>
 </body>
 </html>
