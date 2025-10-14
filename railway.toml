@@ -20,14 +20,14 @@ PYTHONDONTWRITEBYTECODE = { default = "1" }
 
 [healthcheck]
 path = "/"
-interval = 60
-timeout = 30
-initialDelay = 30
+interval = 90
+timeout = 60
+initialDelay = 45
 
 [scaling]
 minReplicas = 1
 maxReplicas = 2
 
 [resources]
-memory = "1Gi"
-cpu = "1000m"
+memory = "2Gi"
+cpu = "2000m"

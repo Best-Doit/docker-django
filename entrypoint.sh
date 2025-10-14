@@ -3,6 +3,9 @@
 # Exit on any error
 set -e
 
+echo "Waiting for services to be ready..."
+sleep 5
+
 echo "Starting Django application..."
 
 # Collect static files
