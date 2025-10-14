@@ -11,13 +11,43 @@
 <body class="min-h-screen text-white flex flex-col" style="background-image: url('{% static 'img/fondo.jpg' %}'); background-size: cover; background-position: center; background-attachment: fixed;">
     <header class="bg-black bg-opacity-30 backdrop-blur-sm">
         <div class="container mx-auto px-4 py-6">
-            <h1 class="text-3xl font-bold text-center text-yellow-200">Convertidor de Documentos</h1>
-            <p class="text-center text-yellow-100 mt-2">Word ⇄ PDF • Imagen a Word/PDF (OCR Avanzado)</p>
+            <h1 class="text-3xl font-bold text-center text-yellow-200">Tu Convertidor de Documentos Profesional</h1>
+            <p class="text-center text-yellow-100 mt-2">Transforma, Edita y Escanea tus Archivos Fácilmente</p>
         </div>
     </header>
 
     <main class="flex-1 flex items-center justify-center px-4 py-8">
         <div class="bg-white bg-opacity-10 backdrop-blur-md rounded-xl p-8 shadow-2xl max-w-md w-full">
+            <h2 class="text-2xl font-bold text-center text-yellow-200 mb-6">Selecciona una Acción</h2>
+
+            <!-- Iconos de las funcionalidades -->
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="flex flex-col items-center p-4 bg-white bg-opacity-15 rounded-lg shadow-inner">
+                    <i class="fas fa-file-word text-3xl text-blue-400 mb-2"></i>
+                    <i class="fas fa-exchange-alt text-lg text-gray-300 mb-2"></i>
+                    <i class="fas fa-file-pdf text-3xl text-red-400"></i>
+                    <p class="text-sm text-yellow-100 mt-2 text-center">Word ⇄ PDF</p>
+                </div>
+                <div class="flex flex-col items-center p-4 bg-white bg-opacity-15 rounded-lg shadow-inner">
+                    <i class="fas fa-image text-3xl text-green-400 mb-2"></i>
+                    <i class="fas fa-long-arrow-alt-right text-lg text-gray-300 mb-2"></i>
+                    <i class="fas fa-file-pdf text-3xl text-red-400"></i>
+                    <p class="text-sm text-yellow-100 mt-2 text-center">Imagen → PDF</p>
+                </div>
+                <div class="flex flex-col items-center p-4 bg-white bg-opacity-15 rounded-lg shadow-inner">
+                    <i class="fas fa-camera text-3xl text-purple-400 mb-2"></i>
+                    <i class="fas fa-search text-lg text-gray-300 mb-2"></i>
+                    <i class="fas fa-file-alt text-3xl text-gray-400"></i>
+                    <p class="text-sm text-yellow-100 mt-2 text-center">Escáner OCR</p>
+                </div>
+                <div class="flex flex-col items-center p-4 bg-white bg-opacity-15 rounded-lg shadow-inner">
+                    <i class="fas fa-hand-pointer text-3xl text-orange-400 mb-2"></i>
+                    <i class="fas fa-cogs text-lg text-gray-300 mb-2"></i>
+                    <i class="fas fa-magic text-3xl text-pink-400"></i>
+                    <p class="text-sm text-yellow-100 mt-2 text-center">Corrección Avanzada</p>
+                </div>
+            </div>
+
             <form id="conversion_form" action="{% url 'docs_pdf:convertir_documento' %}" method="post" enctype="multipart/form-data" class="space-y-6">
                 {% csrf_token %}
                 <div>
@@ -26,22 +56,54 @@
                            accept=".docx,.doc,.pdf,.jpg,.jpeg,.png"
                            class="w-full px-3 py-2 bg-white bg-opacity-20 border border-white border-opacity-30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent">
                     <p class="text-xs text-yellow-100 mt-1">Formatos soportados: .docx, .doc, .pdf, .jpg, .jpeg, .png</p>
-                    <p class="text-xs text-yellow-100 mt-1">📄 Word ⇄ PDF | 🖼️ Imagen → Word/PDF (OCR Avanzado)</p>
+                    <p class="text-xs text-yellow-100 mt-1">Soporta documentos de Word, PDF e imágenes de alta resolución.</p>
                 </div>
-                
+
+                <div class="mt-4">
+                    <button type="button" id="open_camera_btn" 
+                            class="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 transform hover:scale-105 shadow-lg">
+                        <i class="fas fa-camera mr-2"></i>Escanear Documento con Cámara (OCR)
+                    </button>
+                </div>
+
+                <!-- Contenedor para la cámara y el canvas -->
+                <div id="camera_container" class="hidden mt-6 bg-gray-800 rounded-lg p-4">
+                    <video id="video" width="320" height="240" autoplay class="w-full rounded-lg"></video>
+                    <canvas id="canvas" width="320" height="240" class="hidden"></canvas>
+                    <div class="flex justify-around mt-4">
+                        <button type="button" id="capture_btn" 
+                                class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg">
+                            <i class="fas fa-camera"></i> Capturar
+                        </button>
+                        <button type="button" id="retake_btn" 
+                                class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg hidden">
+                            <i class="fas fa-redo"></i> Retomar
+                        </button>
+                        <button type="button" id="upload_camera_btn" 
+                                class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg hidden">
+                            <i class="fas fa-upload"></i> Usar Foto
+                        </button>
+                        <button type="button" id="close_camera_btn" 
+                                class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg">
+                            <i class="fas fa-times"></i> Cerrar
+                        </button>
+                    </div>
+                    <p class="text-xs text-yellow-100 mt-2 text-center">Asegúrate de que el documento esté bien iluminado y enfocado.</p>
+                </div>
+
                 <!-- Selector de formato de salida para imágenes -->
                 <div id="output_format_section" class="hidden">
-                    <label for="output_format" class="block text-sm font-medium text-yellow-200 mb-2">Formato de salida para imagen:</label>
+                    <label for="output_format" class="block text-sm font-medium text-yellow-200 mb-2">Formato de salida para imagen escaneada:</label>
                     <select id="output_format" name="output_format" 
                             class="w-full px-3 py-2 bg-white bg-opacity-20 border border-white border-opacity-30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent">
                         <option value="word" class="text-gray-800">📄 Documento Word (.docx)</option>
                         <option value="pdf" class="text-gray-800">📋 Documento PDF (.pdf)</option>
                     </select>
-                    <p class="text-xs text-yellow-100 mt-1">💡 El OCR avanzado mejora la precisión del reconocimiento de texto</p>
+                    <p class="text-xs text-yellow-100 mt-1">💡 El OCR avanzado mejora la precisión del reconocimiento de texto y corrige la perspectiva.</p>
                 </div>
-                <button type="submit" 
+                <button type="submit" id="convert_button"
                         class="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 transform hover:scale-105 shadow-lg">
-                    <i class="fas fa-exchange-alt mr-2"></i>Convertir Documento
+                    <i class="fas fa-exchange-alt mr-2"></i>Convertir / Procesar Documento
                 </button>
             </form>
 
@@ -107,6 +169,88 @@
         document.addEventListener('DOMContentLoaded', function() {
             const outputFormatSection = document.getElementById('output_format_section');
             outputFormatSection.style.transition = 'all 0.3s ease-in-out';
+
+            // Funcionalidad de la cámara
+            const openCameraBtn = document.getElementById('open_camera_btn');
+            const closeCameraBtn = document.getElementById('close_camera_btn');
+            const cameraContainer = document.getElementById('camera_container');
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const captureBtn = document.getElementById('capture_btn');
+            const retakeBtn = document.getElementById('retake_btn');
+            const uploadCameraBtn = document.getElementById('upload_camera_btn');
+            const documentFileInput = document.getElementById('document_file');
+            const convertButton = document.getElementById('convert_button');
+
+            let stream;
+
+            // Abrir cámara
+            openCameraBtn.addEventListener('click', async () => {
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); // Preferir cámara trasera
+                    video.srcObject = stream;
+                    cameraContainer.classList.remove('hidden');
+                    video.classList.remove('hidden');
+                    canvas.classList.add('hidden');
+                    captureBtn.classList.remove('hidden');
+                    retakeBtn.classList.add('hidden');
+                    uploadCameraBtn.classList.add('hidden');
+                    convertButton.disabled = true; // Deshabilitar botón de conversión principal
+                } catch (err) {
+                    console.error("Error al acceder a la cámara: ", err);
+                    alert("No se pudo acceder a la cámara. Asegúrate de dar permisos.");
+                }
+            });
+
+            // Cerrar cámara
+            closeCameraBtn.addEventListener('click', () => {
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+                cameraContainer.classList.add('hidden');
+                convertButton.disabled = false; // Habilitar botón de conversión principal
+            });
+
+            // Capturar foto
+            captureBtn.addEventListener('click', () => {
+                canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                video.classList.add('hidden');
+                canvas.classList.remove('hidden');
+                captureBtn.classList.add('hidden');
+                retakeBtn.classList.remove('hidden');
+                uploadCameraBtn.classList.remove('hidden');
+                convertButton.disabled = false; // Habilitar botón de conversión
+            });
+
+            // Retomar foto
+            retakeBtn.addEventListener('click', () => {
+                video.classList.remove('hidden');
+                canvas.classList.add('hidden');
+                captureBtn.classList.remove('hidden');
+                retakeBtn.classList.add('hidden');
+                uploadCameraBtn.classList.add('hidden');
+                convertButton.disabled = true; // Deshabilitar botón de conversión
+            });
+
+            // Usar foto (simular subida de archivo)
+            uploadCameraBtn.addEventListener('click', () => {
+                canvas.toBlob(function(blob) {
+                    const file = new File([blob], "camera_scan.png", { type: "image/png" });
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    documentFileInput.files = dataTransfer.files;
+                    
+                    // Disparar el evento change para actualizar la interfaz
+                    const event = new Event('change', { bubbles: true });
+                    documentFileInput.dispatchEvent(event);
+                    
+                    cameraContainer.classList.add('hidden');
+                    if (stream) {
+                        stream.getTracks().forEach(track => track.stop());
+                    }
+                    convertButton.disabled = false; // Habilitar botón de conversión
+                }, 'image/png');
+            });
         });
     </script>
 </body>

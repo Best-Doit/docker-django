@@ -1,5 +1,4 @@
 import os
-import subprocess
 import mimetypes
 import cv2
 import numpy as np
@@ -89,6 +88,60 @@ def preprocess_image_for_ocr(image_path):
     except Exception as e:
         print(f"Error en preprocesamiento: {e}")
         return image_path  # Retornar imagen original si hay error
+
+def correct_image_perspective(image_path):
+    """
+    Corrige la perspectiva de la imagen como un escáner
+    Detecta bordes del documento y aplica transformación perspectiva
+    """
+    try:
+        import cv2
+        import numpy as np
+        
+        # Leer imagen y convertir a escala de grises
+        image = cv2.imread(image_path)
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        
+        # Aplicar filtro Gaussiano y detector de bordes Canny
+        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+        edged = cv2.Canny(blurred, 50, 150)
+        
+        # Encontrar contornos
+        contours, _ = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours = sorted(contours, key=cv2.contourArea, reverse=True)[:5]
+        
+        # Encontrar contorno con 4 puntos (documento)
+        for contour in contours:
+            peri = cv2.arcLength(contour, True)
+            approx = cv2.approxPolyDP(contour, 0.02 * peri, True)
+            
+            if len(approx) == 4:
+                # Puntos del documento
+                doc_points = approx.reshape(4, 2)
+                
+                # Puntos destino (rectángulo perfecto)
+                width, height = 800, 1000
+                dst_points = np.array([[0, 0], [width, 0],
+                                      [width, height], [0, height]], dtype="float32")
+                
+                # Calcular matriz de transformación perspectiva
+                matrix = cv2.getPerspectiveTransform(doc_points.astype("float32"), dst_points)
+                
+                # Aplicar transformación
+                corrected = cv2.warpPerspective(image, matrix, (width, height))
+                
+                # Guardar imagen corregida
+                corrected_path = image_path.replace('.', '_corrected.')
+                cv2.imwrite(corrected_path, corrected)
+                
+                return corrected_path
+        
+        # Si no se encuentra documento, retornar original
+        return image_path
+        
+    except Exception as e:
+        print(f"Error en corrección perspectiva: {e}")
+        return image_path
 
 def extract_text_with_ocr(image_path, output_format='word'):
     """
@@ -229,23 +282,15 @@ def convertir_documento(request):
 
         try:
             if file_extension in ['.docx', '.doc']:
-                # Convertir Word a PDF usando LibreOffice
+                # Convertir Word a PDF usando pdf2docx (nueva implementación)
                 output_filename = os.path.splitext(filename)[0] + '.pdf'
-                result = subprocess.run(
-                    ['libreoffice', '--headless', '--convert-to', 'pdf', filepath, '--outdir', upload_dir],
-                    check=True,
-                    timeout=60,  # Timeout de 60 segundos
-                    capture_output=True,
-                    text=True
-                )
-                
-                # Verificar que el archivo de salida se haya creado
                 output_path = os.path.join(upload_dir, output_filename)
-                if not os.path.exists(output_path):
-                    raise Exception("LibreOffice no pudo generar el archivo PDF")
                 
+                cv = Converter(filepath)
+                cv.convert(output_path, start=0, end=None)
+                cv.close()
                 conversion_type = "Word a PDF"
-            
+
             elif file_extension == '.pdf':
                 # Convertir PDF a Word usando pdf2docx
                 output_filename = os.path.splitext(filename)[0] + '.docx'
@@ -263,14 +308,17 @@ def convertir_documento(request):
                     return render(request, 'index.html', {'message': message})
                 
                 try:
-                    # Abrir la imagen con PIL y validar formato
-                    image = Image.open(filepath)
+                    # Corregir perspectiva de la imagen
+                    corrected_filepath = correct_image_perspective(filepath)
+
+                    # Abrir la imagen corregida con PIL y validar formato
+                    image = Image.open(corrected_filepath)
                     
                     # Verificar que es realmente una imagen válida
                     image.verify()
                     
                     # Reabrir la imagen después de verify() (que la cierra)
-                    image = Image.open(filepath)
+                    image = Image.open(corrected_filepath)
                     
                     # Validar dimensiones mínimas y máximas
                     width, height = image.size
@@ -278,8 +326,8 @@ def convertir_documento(request):
                         message = "La imagen es demasiado pequeña. Dimensiones mínimas: 50x50 píxeles."
                         return render(request, 'index.html', {'message': message})
                     
-                    if width > 4000 or height > 4000:
-                        message = "La imagen es demasiado grande. Dimensiones máximas: 4000x4000 píxeles."
+                    if width > 8000 or height > 8000:
+                        message = "La imagen es demasiado grande. Dimensiones máximas: 8000x8000 píxeles."
                         return render(request, 'index.html', {'message': message})
                     
                     # Convertir a RGB si es necesario (para compatibilidad con OCR)
@@ -294,7 +342,7 @@ def convertir_documento(request):
                 output_format = request.POST.get('output_format', 'word').lower()
                 
                 # Extraer texto usando OCR mejorado
-                extracted_text = extract_text_with_ocr(filepath, output_format)
+                extracted_text = extract_text_with_ocr(corrected_filepath, output_format)
                 
                 if not extracted_text.strip():
                     message = "No se pudo extraer texto de la imagen. Asegúrese de que la imagen contenga texto legible y tenga buena calidad."
@@ -305,12 +353,12 @@ def convertir_documento(request):
                     output_filename = os.path.splitext(filename)[0] + '.pdf'
                     output_path = os.path.join(upload_dir, output_filename)
                     
-                    success = create_pdf_from_text(extracted_text, filepath, output_path)
+                    success = create_pdf_from_text(extracted_text, corrected_filepath, output_path)
                     if not success:
                         message = "Error al crear el archivo PDF."
                         return render(request, 'index.html', {'message': message})
                     
-                    conversion_type = "Imagen a PDF (OCR)"
+                    conversion_type = "Imagen a PDF (OCR con corrección de perspectiva)"
                     
                 else:  # Formato Word por defecto
                     # Crear documento Word
@@ -320,9 +368,9 @@ def convertir_documento(request):
                     doc = Document()
                     doc.add_heading('Texto extraído de imagen', 0)
                     
-                    # Agregar la imagen al documento
+                    # Agregar la imagen corregida al documento
                     doc.add_heading('Imagen original:', level=1)
-                    doc.add_picture(filepath, width=Inches(6))
+                    doc.add_picture(corrected_filepath, width=Inches(6))
                     
                     # Agregar el texto extraído
                     doc.add_heading('Texto extraído:', level=1)
@@ -336,21 +384,16 @@ def convertir_documento(request):
                     # Guardar el documento
                     doc.save(output_path)
                     
-                    conversion_type = "Imagen a Word (OCR)"
+                    conversion_type = "Imagen a Word (OCR con corrección de perspectiva)"
             
-            # Eliminar el archivo original después de la conversión
+            # Eliminar el archivo original y corregido después de la conversión
             os.remove(filepath)
+            if filepath != corrected_filepath and os.path.exists(corrected_filepath):
+                os.remove(corrected_filepath)
 
             archivo_convertido = output_filename
             message = f"¡Se ha convertido {document_file.name} de {conversion_type} exitosamente!"
             
-        except subprocess.TimeoutExpired:
-            message = "Error: La conversión tardó demasiado tiempo. Intenta con un archivo más pequeño."
-        except subprocess.CalledProcessError as e:
-            if 'libreoffice' in str(e.cmd):
-                message = "Error: No se pudo convertir el archivo DOCX. Verifica que el archivo no esté corrupto."
-            else:
-                message = f"Error en la conversión: {e}"
         except Exception as e:
             message = f"Error inesperado en la conversión: {e}"
 
