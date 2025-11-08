@@ -1,6 +1,5 @@
 import os
 import subprocess
-import mimetypes
 from django.shortcuts import render
 from django.http import HttpResponse, HttpResponseNotFound
 from django.core.files.storage import FileSystemStorage
@@ -30,21 +29,14 @@ def convertir_documento(request):
             message = f"Tipo de archivo no permitido. Solo se permiten: {', '.join(settings.ALLOWED_UPLOAD_EXTENSIONS)}"
             return render(request, 'index.html', {'message': message})
         
-        # Validar tipo MIME según el tipo de archivo
-        mime_type, _ = mimetypes.guess_type(document_file.name)
-        if file_extension in ['.docx', '.doc', '.odt', '.rtf']:
-            if mime_type and mime_type not in settings.ALLOWED_WORD_MIMES:
-                message = "Tipo de archivo no válido. Solo se permiten documentos válidos."
-                return render(request, 'index.html', {'message': message})
-        elif file_extension == '.pdf':
-            if mime_type and mime_type not in settings.ALLOWED_PDF_MIMES:
-                message = "Tipo de archivo no válido. Solo se permiten archivos PDF válidos."
-                return render(request, 'index.html', {'message': message})
-        
         # Directorio donde se guardará el archivo
-        upload_dir = os.path.join(settings.MEDIA_ROOT, 'converted_files')
-        os.makedirs(upload_dir, exist_ok=True)
-        fs = FileSystemStorage(location=upload_dir)
+        try:
+            upload_dir = os.path.join(settings.MEDIA_ROOT, 'converted_files')
+            os.makedirs(upload_dir, exist_ok=True)
+            fs = FileSystemStorage(location=upload_dir)
+        except Exception as e:
+            message = f"Error al crear directorio de carga: {e}"
+            return render(request, 'index.html', {'message': message})
 
         # Sanitizar nombre del archivo
         safe_filename = ''.join(c for c in document_file.name if c.isalnum() or c in '._-')
@@ -52,8 +44,12 @@ def convertir_documento(request):
             safe_filename = f'documento{file_extension}'
         
         # Guardar el archivo
-        filename = fs.save(safe_filename, document_file)
-        filepath = os.path.join(upload_dir, filename)
+        try:
+            filename = fs.save(safe_filename, document_file)
+            filepath = os.path.join(upload_dir, filename)
+        except Exception as e:
+            message = f"Error al guardar el archivo: {e}"
+            return render(request, 'index.html', {'message': message})
 
         try:
             # Conversión de documentos Word/Office a PDF
