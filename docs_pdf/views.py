@@ -1,8 +1,6 @@
 import os
 import subprocess
 import mimetypes
-import cv2
-import numpy as np
 from django.shortcuts import render
 from django.http import HttpResponse, HttpResponseNotFound
 from django.core.files.storage import FileSystemStorage
@@ -10,272 +8,7 @@ from django.conf import settings
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods
 from pdf2docx import Converter
-import pytesseract
-from PIL import Image, ImageEnhance, ImageFilter
-from docx import Document
-from docx.shared import Inches
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter, A4
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.lib.utils import ImageReader
-import imutils
 
-def preprocess_image_for_ocr(image_path):
-    """
-    Preprocesa una imagen para mejorar la precisión del OCR
-    Usa PIL para compatibilidad con Railway
-    """
-    try:
-        # Intentar usar OpenCV si está disponible
-        try:
-            import cv2
-            import numpy as np
-            
-            # Leer imagen con OpenCV
-            img = cv2.imread(image_path)
-            if img is None:
-                raise Exception("No se pudo cargar la imagen")
-            
-            # Convertir a escala de grises
-            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            
-            # Reducir ruido
-            denoised = cv2.medianBlur(gray, 3)
-            
-            # Aplicar filtro bilateral para reducir ruido manteniendo bordes
-            filtered = cv2.bilateralFilter(denoised, 9, 75, 75)
-            
-            # Mejorar contraste usando CLAHE
-            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-            enhanced = clahe.apply(filtered)
-            
-            # Aplicar umbralización adaptativa
-            thresh = cv2.adaptiveThreshold(enhanced, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
-            
-            # Operaciones morfológicas para limpiar la imagen
-            kernel = np.ones((1,1), np.uint8)
-            cleaned = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
-            
-            # Guardar imagen preprocesada temporalmente
-            temp_path = image_path.replace('.', '_processed.')
-            cv2.imwrite(temp_path, cleaned)
-            
-            return temp_path
-            
-        except ImportError:
-            # Fallback a PIL si OpenCV no está disponible
-            print("OpenCV no disponible, usando PIL para preprocesamiento básico")
-            
-            # Usar PIL para preprocesamiento básico
-            image = Image.open(image_path)
-            
-            # Convertir a escala de grises
-            if image.mode != 'L':
-                image = image.convert('L')
-            
-            # Mejorar contraste
-            enhancer = ImageEnhance.Contrast(image)
-            image = enhancer.enhance(2.0)
-            
-            # Mejorar nitidez
-            image = image.filter(ImageFilter.SHARPEN)
-            
-            # Guardar imagen preprocesada
-            temp_path = image_path.replace('.', '_processed.')
-            image.save(temp_path)
-            
-            return temp_path
-        
-    except Exception as e:
-        print(f"Error en preprocesamiento: {e}")
-        return image_path  # Retornar imagen original si hay error
-
-def order_points(pts):
-    # Inicializar una lista de coordenadas ordenadas
-    # ([arriba-izquierda, arriba-derecha, abajo-derecha, abajo-izquierda])
-    rect = np.zeros((4, 2), dtype = "float32")
-    
-    # La suma de las coordenadas x e y nos dará el punto superior-izquierda,
-    # mientras que el punto inferior-derecha tendrá la suma más grande.
-    s = pts.sum(axis = 1)
-    rect[0] = pts[np.argmin(s)]
-    rect[2] = pts[np.argmax(s)]
-    
-    # Calcular la diferencia entre las coordenadas x e y para encontrar
-    # el punto superior-derecha (diferencia más pequeña) y el inferior-izquierda (diferencia más grande)
-    diff = np.diff(pts, axis = 1)
-    rect[1] = pts[np.argmin(diff)]
-    rect[3] = pts[np.argmax(diff)]
-    
-    # Retornar las coordenadas ordenadas
-    return rect
-
-def correct_image_perspective(image_path):
-    """
-    Corrige la perspectiva de la imagen como un escáner.
-    Detecta bordes del documento, aplica transformación de perspectiva y mejora la calidad.
-    """
-    try:
-        import cv2
-        import numpy as np
-        
-        image = cv2.imread(image_path)
-        if image is None:
-            raise Exception("No se pudo cargar la imagen para corrección de perspectiva.")
-
-        # Escalar imagen para procesamiento si es muy grande
-        ratio = image.shape[0] / 500.0
-        orig = image.copy()
-        image = imutils.resize(image, height = 500)
-
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-        edged = cv2.Canny(blurred, 75, 200)
-
-        contours, _ = cv2.findContours(edged.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-        contours = sorted(contours, key = cv2.contourArea, reverse = True)[:5]
-
-        screenCnt = None
-        for c in contours:
-            peri = cv2.arcLength(c, True)
-            approx = cv2.approxPolyDP(c, 0.02 * peri, True)
-            
-            if len(approx) == 4:
-                screenCnt = approx
-                break
-        
-        if screenCnt is None:
-            print("No se pudo encontrar el contorno del documento, retornando imagen original.")
-            return image_path
-
-        # Aplicar corrección de perspectiva
-        rect = order_points(screenCnt.reshape(4, 2) * ratio) # Multiplicar por el ratio para obtener las coordenadas originales
-        (tl, tr, br, bl) = rect
-
-        # Calcular el ancho de la nueva imagen
-        widthA = np.sqrt(((br[0] - bl[0]) ** 2) + ((br[1] - bl[1]) ** 2))
-        widthB = np.sqrt(((tr[0] - tl[0]) ** 2) + ((tr[1] - tl[1]) ** 2))
-        maxWidth = max(int(widthA), int(widthB))
-
-        # Calcular la altura de la nueva imagen
-        heightA = np.sqrt(((tr[0] - br[0]) ** 2) + ((tr[1] - br[1]) ** 2))
-        heightB = np.sqrt(((tl[0] - bl[0]) ** 2) + ((tl[1] - bl[1]) ** 2))
-        maxHeight = max(int(heightA), int(heightB))
-
-        dst = np.array([
-            [0, 0],
-            [maxWidth - 1, 0],
-            [maxWidth - 1, maxHeight - 1],
-            [0, maxHeight - 1]], dtype = "float32")
-
-        M = cv2.getPerspectiveTransform(rect, dst)
-        corrected = cv2.warpPerspective(orig, M, (maxWidth, maxHeight))
-
-        # Guardar imagen corregida temporalmente
-        corrected_path = image_path.replace('.', '_corrected.')
-        cv2.imwrite(corrected_path, corrected)
-
-        return corrected_path
-        
-    except ImportError:
-        print("OpenCV no disponible para corrección de perspectiva, se omitirá.")
-        return image_path
-    except Exception as e:
-        print(f"Error en corrección perspectiva: {e}")
-        return image_path
-
-def extract_text_with_ocr(image_path, output_format='word'):
-    """
-    Extrae texto de una imagen usando OCR con preprocesamiento
-    """
-    try:
-        # Preprocesar imagen
-        processed_path = preprocess_image_for_ocr(image_path)
-        
-        # Configurar Tesseract para mejor precisión
-        custom_config = r'--oem 3 --psm 6 -l spa+eng'
-        
-        # Extraer texto
-        extracted_text = pytesseract.image_to_string(processed_path, config=custom_config)
-        
-        # Limpiar archivo temporal si se creó
-        if processed_path != image_path and os.path.exists(processed_path):
-            os.remove(processed_path)
-        
-        return extracted_text.strip()
-        
-    except Exception as e:
-        print(f"Error en OCR: {e}")
-        return ""
-
-def create_pdf_from_text(text, image_path, output_path):
-    """
-    Crea un PDF con el texto extraído y la imagen original
-    """
-    try:
-        c = canvas.Canvas(output_path, pagesize=A4)
-        width, height = A4
-        
-        # Título
-        c.setFont("Helvetica-Bold", 16)
-        c.drawString(50, height - 50, "Documento generado por OCR")
-        
-        # Imagen original
-        c.setFont("Helvetica", 12)
-        c.drawString(50, height - 100, "Imagen original:")
-        
-        # Redimensionar imagen para que quepa en la página
-        img = ImageReader(image_path)
-        img_width, img_height = img.getSize()
-        max_width = width - 100
-        max_height = 200
-        
-        # Calcular dimensiones manteniendo proporción
-        ratio = min(max_width/img_width, max_height/img_height)
-        new_width = img_width * ratio
-        new_height = img_height * ratio
-        
-        c.drawImage(img, 50, height - 100 - new_height - 20, width=new_width, height=new_height)
-        
-        # Texto extraído
-        c.drawString(50, height - 100 - new_height - 50, "Texto extraído:")
-        
-        # Dividir texto en líneas y agregar al PDF
-        lines = text.split('\n')
-        y_position = height - 100 - new_height - 80
-        
-        c.setFont("Helvetica", 10)
-        for line in lines:
-            if y_position < 50:  # Nueva página si no hay espacio
-                c.showPage()
-                y_position = height - 50
-                c.setFont("Helvetica", 10)
-            
-            # Dividir líneas largas
-            if len(line) > 80:
-                words = line.split()
-                current_line = ""
-                for word in words:
-                    if len(current_line + word) > 80:
-                        c.drawString(50, y_position, current_line)
-                        y_position -= 15
-                        current_line = word + " "
-                    else:
-                        current_line += word + " "
-                if current_line:
-                    c.drawString(50, y_position, current_line)
-                    y_position -= 15
-            else:
-                c.drawString(50, y_position, line)
-                y_position -= 15
-        
-        c.save()
-        return True
-        
-    except Exception as e:
-        print(f"Error creando PDF: {e}")
-        return False
 
 @csrf_protect
 @require_http_methods(["GET", "POST"])
@@ -299,12 +32,12 @@ def convertir_documento(request):
         
         # Validar tipo MIME según el tipo de archivo
         mime_type, _ = mimetypes.guess_type(document_file.name)
-        if file_extension in ['.docx', '.doc']:
-            if mime_type not in settings.ALLOWED_WORD_MIMES:
-                message = "Tipo de archivo no válido. Solo se permiten documentos de Word válidos."
+        if file_extension in ['.docx', '.doc', '.odt', '.rtf']:
+            if mime_type and mime_type not in settings.ALLOWED_WORD_MIMES:
+                message = "Tipo de archivo no válido. Solo se permiten documentos válidos."
                 return render(request, 'index.html', {'message': message})
         elif file_extension == '.pdf':
-            if mime_type not in settings.ALLOWED_PDF_MIMES:
+            if mime_type and mime_type not in settings.ALLOWED_PDF_MIMES:
                 message = "Tipo de archivo no válido. Solo se permiten archivos PDF válidos."
                 return render(request, 'index.html', {'message': message})
         
@@ -323,8 +56,9 @@ def convertir_documento(request):
         filepath = os.path.join(upload_dir, filename)
 
         try:
-            if file_extension in ['.docx', '.doc']:
-                # Convertir Word a PDF usando LibreOffice
+            # Conversión de documentos Word/Office a PDF
+            if file_extension in ['.docx', '.doc', '.odt', '.rtf']:
+                # Convertir Word/Office a PDF usando LibreOffice
                 output_filename = os.path.splitext(filename)[0] + '.pdf'
                 result = subprocess.run(
                     ['libreoffice', '--headless', '--convert-to', 'pdf', filepath, '--outdir', upload_dir],
@@ -339,8 +73,9 @@ def convertir_documento(request):
                 if not os.path.exists(output_path):
                     raise Exception("LibreOffice no pudo generar el archivo PDF")
                 
-                conversion_type = "Word a PDF"
+                conversion_type = f"Documento ({file_extension.upper()}) a PDF"
 
+            # Conversión de PDF a Word
             elif file_extension == '.pdf':
                 # Convertir PDF a Word usando pdf2docx
                 output_filename = os.path.splitext(filename)[0] + '.docx'
@@ -352,108 +87,28 @@ def convertir_documento(request):
                     cv.close()
                     conversion_type = "PDF a Word"
                 except Exception as e:
-                    message = f"Error al convertir PDF a Word con pdf2docx: {e}"
+                    message = f"Error al convertir PDF a Word: {e}"
                     # Limpiar archivo temporal si existe
-                    if os.path.exists(filepath): os.remove(filepath)
+                    if os.path.exists(filepath):
+                        os.remove(filepath)
                     return render(request, 'index.html', {'message': message})
-                
-            # Conversión de imagen usando OCR mejorado
-            elif file_extension in ['.jpg', '.jpeg', '.png']:
-                if mime_type not in settings.ALLOWED_IMAGE_MIMES:
-                    message = "Tipo de archivo de imagen no válido."
-                    return render(request, 'index.html', {'message': message})
-                
-                corrected_filepath = filepath # Inicializar corrected_filepath
-
-                try:
-                    # Corregir perspectiva de la imagen
-                    corrected_filepath = correct_image_perspective(filepath)
-
-                    # Abrir la imagen corregida con PIL y validar formato
-                    image = Image.open(corrected_filepath)
-                    
-                    # Verificar que es realmente una imagen válida
-                    image.verify()
-                    
-                    # Reabrir la imagen después de verify() (que la cierra)
-                    image = Image.open(corrected_filepath)
-                    
-                    # Validar dimensiones mínimas y máximas
-                    width, height = image.size
-                    if width < 50 or height < 50:
-                        message = "La imagen es demasiado pequeña. Dimensiones mínimas: 50x50 píxeles."
-                        return render(request, 'index.html', {'message': message})
-                    
-                    if width > 8000 or height > 8000:
-                        message = "La imagen es demasiado grande. Dimensiones máximas: 8000x8000 píxeles."
-                        return render(request, 'index.html', {'message': message})
-                    
-                    # Convertir a RGB si es necesario (para compatibilidad con OCR)
-                    if image.mode not in ('RGB', 'L'):
-                        image = image.convert('RGB')
-                        
-                except Exception as e:
-                    message = f"Error al procesar la imagen: {str(e)}. Asegúrese de que el archivo sea una imagen válida."
-                    return render(request, 'index.html', {'message': message})
-                
-                # Obtener formato de salida del formulario
-                output_format = request.POST.get('output_format', 'word').lower()
-                
-                # Extraer texto usando OCR mejorado
-                extracted_text = extract_text_with_ocr(corrected_filepath, output_format)
-                
-                if not extracted_text.strip():
-                    message = "No se pudo extraer texto de la imagen. Asegúrese de que la imagen contenga texto legible y tenga buena calidad."
-                    return render(request, 'index.html', {'message': message})
-                
-                if output_format == 'pdf':
-                    # Crear PDF con texto extraído
-                    output_filename = os.path.splitext(filename)[0] + '.pdf'
-                    output_path = os.path.join(upload_dir, output_filename)
-                    
-                    success = create_pdf_from_text(extracted_text, corrected_filepath, output_path)
-                    if not success:
-                        message = "Error al crear el archivo PDF."
-                        return render(request, 'index.html', {'message': message})
-                    
-                    conversion_type = "Imagen a PDF (OCR con corrección de perspectiva)"
-                    
-                else:  # Formato Word por defecto
-                    # Crear documento Word
-                    output_filename = os.path.splitext(filename)[0] + '.docx'
-                    output_path = os.path.join(upload_dir, output_filename)
-                    
-                    doc = Document()
-                    doc.add_heading('Texto extraído de imagen', 0)
-                    
-                    # Agregar la imagen corregida al documento
-                    doc.add_heading('Imagen original:', level=1)
-                    doc.add_picture(corrected_filepath, width=Inches(6))
-                    
-                    # Agregar el texto extraído
-                    doc.add_heading('Texto extraído:', level=1)
-                    
-                    # Dividir el texto en párrafos
-                    paragraphs = extracted_text.split('\n')
-                    for paragraph in paragraphs:
-                        if paragraph.strip():  # Solo agregar párrafos no vacíos
-                            doc.add_paragraph(paragraph.strip())
-                    
-                    # Guardar el documento
-                    doc.save(output_path)
-                    
-                    conversion_type = "Imagen a Word (OCR con corrección de perspectiva)"
+            else:
+                message = f"Formato de archivo no soportado: {file_extension}"
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+                return render(request, 'index.html', {'message': message})
             
-            # Eliminar el archivo original y corregido después de la conversión
-            os.remove(filepath)
-            if filepath != corrected_filepath and os.path.exists(corrected_filepath):
-                os.remove(corrected_filepath)
+            # Eliminar el archivo original después de la conversión
+            if os.path.exists(filepath):
+                os.remove(filepath)
 
             archivo_convertido = output_filename
             message = f"¡Se ha convertido {document_file.name} de {conversion_type} exitosamente!"
             
         except subprocess.TimeoutExpired:
             message = "Error: La conversión tardó demasiado tiempo. Intenta con un archivo más pequeño."
+            if os.path.exists(filepath):
+                os.remove(filepath)
         except subprocess.CalledProcessError as e:
             # Incluir la salida de LibreOffice en el mensaje de error
             error_output = e.stderr if e.stderr else e.stdout
@@ -461,8 +116,12 @@ def convertir_documento(request):
                 message = f"Error: LibreOffice no pudo convertir el archivo. Verifica que el archivo no esté corrupto o sea compatible. Detalles: {error_output}"
             else:
                 message = f"Error en la conversión: {e}. Detalles: {error_output}"
+            if os.path.exists(filepath):
+                os.remove(filepath)
         except Exception as e:
             message = f"Error inesperado en la conversión: {e}"
+            if os.path.exists(filepath):
+                os.remove(filepath)
 
     return render(request, 'index.html', {'message': message, 'archivo_convertido': archivo_convertido})
 
@@ -479,10 +138,6 @@ def descargar_archivo(request, filename):
             content_type = 'application/pdf'
         elif file_extension == '.docx':
             content_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        elif file_extension in ['.jpg', '.jpeg']:
-            content_type = 'image/jpeg'
-        elif file_extension == '.png':
-            content_type = 'image/png'
         else:
             content_type = 'application/octet-stream'
         

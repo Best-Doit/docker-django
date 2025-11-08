@@ -10,16 +10,3 @@ gunicorn==21.2.0
 
 # Archivos estáticos
 whitenoise==6.5.0
-
-# OCR y procesamiento de imágenes
-pytesseract==0.3.10
-python-docx==0.8.11
-Pillow==10.0.0
-opencv-python-headless==4.12.0.88
-numpy==2.2.6
-reportlab==4.0.4
-imutils==0.5.4
-
-# Dependencias del sistema para Tesseract OCR
-# Nota: En Railway, Tesseract debe estar instalado en el sistema
-# Si hay problemas, usar: apt-get install tesseract-ocr tesseract-ocr-spa

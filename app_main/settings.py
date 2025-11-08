@@ -145,17 +145,15 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024  # 25MB
 FILE_UPLOAD_PERMISSIONS = 0o644
 
 # Allowed file extensions for uploads
-ALLOWED_UPLOAD_EXTENSIONS = ['.docx', '.doc', '.pdf', '.jpg', '.jpeg', '.png']
+ALLOWED_UPLOAD_EXTENSIONS = ['.docx', '.doc', '.pdf', '.odt', '.rtf']
 MAX_UPLOAD_SIZE = 25 * 1024 * 1024  # 25MB
 
 # Allowed MIME types for uploads
 ALLOWED_WORD_MIMES = [
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/msword'
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',  # .docx
+    'application/msword',  # .doc
+    'application/vnd.oasis.opendocument.text',  # .odt
+    'application/rtf',  # .rtf
+    'text/rtf',  # .rtf (alternativo)
 ]
 ALLOWED_PDF_MIMES = ['application/pdf']
-
-ALLOWED_IMAGE_MIMES = [
-    'image/jpeg',  # .jpg, .jpeg
-    'image/png',   # .png
-]
